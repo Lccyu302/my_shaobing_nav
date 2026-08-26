@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root BTCPP_format="4">
+    <BehaviorTree ID="1">
+        <ReactiveSequence>
+            <!-- 黑板数据订阅 -->
+            <Topics2Blackboard
+                target_armor_id="{target_armor_id}"
+                tracking="{tracking}"
+                projectile_allowance_17mm="{projectile_allowance_17mm}"
+                enemy_outpost_hp="{enemy_outpost_hp}"
+                my_base_hp="{my_base_hp}"
+                my_outpost_hp="{my_outpost_hp}"
+                armor_id="{armor_id}"
+                target_position="{target_position}"
+                enemy_base_hp="{enemy_base_hp}"
+                hurt_type="{hurt_type}"
+                stage_remain_time="{stage_remain_time}"
+                game_progress="{game_progress}"
+                current_hp="{current_hp}"
+                enemy_outpost_occupied="{enemy_outpost_occupied}"/>
+
+            <!-- 仅在比赛进行中执行行为 -->
+            <ReactiveFallback _while="game_progress==4">
+
+                <!-- ========== 第一优先级：血量不足（回基地补给区） ========== -->
+                <SequenceWithMemory>
+                    <ScriptCondition code="current_hp &lt; 120"/>
+                    <Sequence>
+                        <!-- <ChassisTypePublisher chassis_cmd="2"/> -->
+                        <Nav2Pose goal="0.0,0.0,0.0,0.0,0.0,0.0,0.0"/>
+                        <!-- <ChassisTypePublisher chassis_cmd="4"/> -->
+                        <RetryUntilSuccessful num_attempts="10000">
+                            <ScriptCondition code="current_hp &gt; 399"/>
+                        </RetryUntilSuccessful>
+                    </Sequence>
+                </SequenceWithMemory>
+
+                   <!-- ========== 第三优先级：血量充足且正在追踪 → 攻击行为 ==========
+                <ReactiveSequence name="ATTCK!"
+                          _while="tracking==true &amp;&amp; current_hp &gt;= 120">
+                    <Attack name="Calculate Attack Pose"
+                     attack_pose="{attack_pose}"
+                     target_position="{target_position}"/>
+                    <Timeout msec="1100">
+                       <Nav2Pose goal="{attack_pose}"/>
+                    </Timeout>
+                </ReactiveSequence> -->
+
+                <!-- ========== 第二优先级：血量充足且未追踪 → 前往 Buff 点 ========== -->
+                <Sequence>
+                        <ScriptCondition code="current_hp &gt;= 120"/>
+                        <Sequence> 
+                            <!-- <ChassisTypePublisher chassis_cmd="2"/> -->
+                            <Nav2Pose goal="5.6,-2.4,0.0,0.0,0.0,0.0,0.0"/>
+                            <!-- <Nav2Pose goal="4.4,-2.3,0.0,0.0,0.0,0.0,0.0"/> -->
+                            <!-- <ChassisTypePublisher chassis_cmd="4"/> -->
+                        </Sequence>
+                </Sequence>
+
+                <!-- ========== 第三优先级：血量充足且正在追踪 → 攻击行为 ========== -->
+                <!-- <ReactiveSequence name="ATTCK!"
+                          _while="tracking==true &amp;&amp; current_hp &gt;= 120">
+                    <Attack name="Calculate Attack Pose"
+                     attack_pose="{attack_pose}"
+                     target_position="{target_position}"/>
+                    <Timeout msec="1100">
+                       <Nav2Pose goal="{attack_pose}"/>
+                    </Timeout>
+                </ReactiveSequence> -->
+
+            </ReactiveFallback>
+        </ReactiveSequence>
+    </BehaviorTree>
+
+    <!-- Description of Node Models (used by Groot) -->
+    <TreeNodesModel>
+        <Action ID="Attack">
+            <output_port name="attack_pose" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;"/>
+            <input_port name="target_position" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;"/>
+        </Action>
+        <Action ID="ChassisTypePublisher">
+            <input_port name="chassis_cmd" type="signed char">Chassis type value (0-127)</input_port>
+        </Action>
+        <Decorator ID="IsInPosition">
+            <input_port name="p1" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;"/>
+            <input_port name="p2" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;"/>
+            <input_port name="p3" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;"/>
+            <input_port name="p4" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;"/>
+        </Decorator>
+        <Action ID="ModePublisher">
+            <input_port name="mode" type="signed char">Robot mode: 0=defense, 1=offense, 2=mobile</input_port>
+        </Action>
+        <Action ID="Nav2Pose">
+            <input_port name="goal" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;">goal send to navigator.</input_port>
+        </Action>
+        <Action ID="Topics2Blackboard">
+            <output_port name="target_armor_id" type="std::string"/>
+            <output_port name="tracking" type="bool"/>
+            <output_port name="projectile_allowance_17mm" type="unsigned short"/>
+            <output_port name="enemy_outpost_hp" type="unsigned short"/>
+            <output_port name="my_base_hp" type="unsigned short"/>
+            <output_port name="my_outpost_hp" type="unsigned short"/>
+            <output_port name="armor_id" type="unsigned char"/>
+            <output_port name="target_position" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;"/>
+            <output_port name="enemy_base_hp" type="unsigned short"/>
+            <output_port name="hurt_type" type="unsigned char"/>
+            <output_port name="stage_remain_time" type="unsigned short"/>
+            <output_port name="game_progress" type="unsigned char"/>
+            <output_port name="current_hp" type="unsigned short"/>
+            <output_port name="enemy_outpost_occupied" type="bool"/>
+        </Action>
+    </TreeNodesModel>
+</root>

@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root BTCPP_format="4">
+    <BehaviorTree ID="1">
+        <ReactiveSequence>
+            <!-- 黑板数据订阅（新增 enemy_outpost_occupied） -->
+            <Topics2Blackboard
+                target_armor_id="{target_armor_id}"
+                tracking="{tracking}"
+                projectile_allowance_17mm="{projectile_allowance_17mm}"
+                enemy_outpost_hp="{enemy_outpost_hp}"
+                my_base_hp="{my_base_hp}"
+                my_outpost_hp="{my_outpost_hp}"
+                armor_id="{armor_id}"
+                target_position="{target_position}"
+                enemy_base_hp="{enemy_base_hp}"
+                hurt_type="{hurt_type}"
+                stage_remain_time="{stage_remain_time}"
+                game_progress="{game_progress}"
+                current_hp="{current_hp}"
+                enemy_outpost_occupied="{enemy_outpost_occupied}"/>
+
+            <!-- 仅在比赛进行中执行行为 -->
+            <ReactiveFallback _while="game_progress==4">
+                <!-- 0. 机器人死亡时仅设置底盘模式2（姿态无意义） -->
+                <ChassisTypePublisher chassis_cmd="2" _while="current_hp==0"/>
+
+                <!-- mode:0,防御姿态；1,进攻姿态；2,移动姿态 -->
+
+                <!-- ========== 第一优先级：血量不足（回基地补给区） ========== -->
+                <SequenceWithMemory>
+                    <ScriptCondition code="current_hp &lt; 100&amp;&amp;hurt_type == 1"/>
+                    <Sequence>
+                        <ModePublisher mode="0"/>   <!-- 防御姿态 -->
+                        <ChassisTypePublisher chassis_cmd="2"/>
+                        <Nav2Pose goal="0.0,0.05,0.0,0.0,0.0,0.0,0.0"/>
+                        <ChassisTypePublisher chassis_cmd="4"/>
+                        <RetryUntilSuccessful num_attempts="10000">
+                            <ScriptCondition code="current_hp &gt; 399"/>
+                        </RetryUntilSuccessful>
+                    </Sequence>
+                </SequenceWithMemory>
+
+                <SequenceWithMemory>
+                    <ScriptCondition code="current_hp &lt; 100&amp;&amp;hurt_type == 0"/>
+                    <Sequence>
+                        <ModePublisher mode="2"/>   <!-- 防御姿态 -->
+                        <ChassisTypePublisher chassis_cmd="2"/>
+                        <Nav2Pose goal="0.0,0.05,0.0,0.0,0.0,0.0,0.0"/>
+                        <ChassisTypePublisher chassis_cmd="4"/>
+                        <RetryUntilSuccessful num_attempts="10000">
+                            <ScriptCondition code="current_hp &gt; 399"/>
+                        </RetryUntilSuccessful>
+                    </Sequence>
+                </SequenceWithMemory>
+
+                <!-- ========== 第二优先级：前哨站相关补给（弹丸＜16） ========== -->
+                <!-- 2a. 前哨站存活且弹丸<16 → 前往前哨站补给点 -->
+                <SequenceWithMemory>
+                    <Sequence _while="current_hp&gt;100&amp;&amp;my_outpost_hp&gt;0 &amp;&amp; projectile_allowance_17mm&lt;16">
+                        <ModePublisher mode="2"/>   <!-- 移动姿态 -->
+                        <ChassisTypePublisher chassis_cmd="2"/>
+                        <Nav2Pose goal="0.05,3.6,0.0,0.0,0.0,0.0,0.0"/>
+                        <ChassisTypePublisher chassis_cmd="4"/>
+                        <RetryUntilSuccessful num_attempts="10000">
+                            <ScriptCondition code="projectile_allowance_17mm&gt;99"/>
+                        </RetryUntilSuccessful>
+                    </Sequence>
+                </SequenceWithMemory>
+
+                <!-- 2b. 前哨站已毁且弹丸<16 → 回补给区 -->
+                <SequenceWithMemory>
+                    <Sequence _while="current_hp&gt;100&amp;&amp;my_outpost_hp==0 &amp;&amp; projectile_allowance_17mm&lt;16">
+                        <ModePublisher mode="2"/>
+                        <ChassisTypePublisher chassis_cmd="2"/>
+                        <Nav2Pose goal="0.0,0.05,0.0,0.0,0.0,0.0,0.0"/>
+                        <ChassisTypePublisher chassis_cmd="4"/>
+                        <RetryUntilSuccessful num_attempts="10000">
+                            <ScriptCondition code="projectile_allowance_17mm&gt;99"/>
+                        </RetryUntilSuccessful>
+                    </Sequence>
+                </SequenceWithMemory>
+
+                <!-- ========== 第三优先级：敌方前哨站相关 ========== -->
+                <!-- 3a. 敌方前哨站>0 → 前往攻击点 -->
+                <SequenceWithMemory>
+                    <Sequence _while="current_hp&gt;100&amp;&amp;enemy_outpost_hp&gt;0">
+                        <ModePublisher mode="1"/>   <!-- 攻击姿态 -->
+                        <Delay delay_msec="10">
+                            <ChassisTypePublisher chassis_cmd="2"/>
+                        </Delay>
+                        <Nav2Pose goal="2.7,3.5,0.0,0.0,0.0,0.0,0.0"/>
+                        <ChassisTypePublisher chassis_cmd="4"/>
+                    </Sequence>
+                </SequenceWithMemory>
+
+                <!-- 3b. 前哨站增益点未被占领 → 前往对方前哨站位置 -->
+                <Sequence _while="current_hp&gt;100&amp;&amp;my_outpost_hp&gt;0 &amp;&amp; enemy_outpost_hp==0 &amp;&amp; enemy_outpost_occupied==0">
+                    <ModePublisher mode="0"/>   <!-- 防御姿态 -->
+                    <Delay delay_msec="10">
+                        <ChassisTypePublisher chassis_cmd="2"/>
+                    </Delay>
+                    <Nav2Pose goal="3.0,3.5,0.0,0.0,0.0,0.0,0.0"/>
+                    <ChassisTypePublisher chassis_cmd="4"/>
+                    <!-- 到达后切换为防御姿态 -->
+                </Sequence>
+
+                <!-- ========== 第四优先级：ATTACK姿态 ========== -->
+                <ReactiveSequence name="ATTACK" _while="current_hp&gt;100&amp;&amp;enemy_outpost_hp==0 &amp;&amp; tracking==true">
+                    <!-- 攻击姿态可能由 Attack 节点内部处理，但为明确可在此设置 mode=1 -->
+                    <ModePublisher mode="1"/>
+                    <Attack name="Calculate Attack Pose" attack_pose="{attack_pose}" target_position="{target_position}"/>
+                    <IsInPosition
+                        p1="0.05,0.0,0.0,0.0,0.0,0.0,0.0"
+                        p2="2.85,3.3,0.0,0.0,0.0,0.0,0.0"
+                        p3="2.05,3.2,0.0,0.0,0.0,0.0,0.0"
+                        p4="1.95,1.4,0.0,0.0,0.0,0.0,0.0">
+                        <Sequence>
+                            <ChassisTypePublisher chassis_cmd="2"/>
+                            <Nav2Pose goal="{attack_pose}"/>
+                            <ChassisTypePublisher chassis_cmd="4"/>
+                        </Sequence>
+                    </IsInPosition>
+                </ReactiveSequence>
+
+                <!-- ========== 第五优先级：其余时刻执行巡逻（原巡逻路径） ========== -->
+                <Sequence _while= "(enemy_outpost_hp==0&amp;&amp;enemy_outpost_occupied==1) || (my_outpost_hp==0)">
+                    <ModePublisher mode="2"/>   <!-- 移动姿态 -->
+                    <!-- 点1 -->
+                    <Sequence>
+                        <ChassisTypePublisher chassis_cmd="2"/>
+                        <Nav2Pose goal="0.05,1.05,0.0,0.0,0.0,0.0,0.0"/>
+                        <ChassisTypePublisher chassis_cmd="4"/>
+                        <Sleep msec="1000"/>
+                    </Sequence>
+                    <!-- 点2 -->
+                    <Sequence>
+                        <ChassisTypePublisher chassis_cmd="2"/>
+                        <Nav2Pose goal="1.85,3.0,0.0,0.0,0.0,0.0,0.0"/>
+                        <ChassisTypePublisher chassis_cmd="4"/>
+                        <Sleep msec="1000"/>
+                    </Sequence>
+                    <!-- 点3 -->
+                    <Sequence>
+                        <ChassisTypePublisher chassis_cmd="2"/>
+                        <Nav2Pose goal="0.05,1.05,0.0,0.0,0.0,0.0,0.0"/>
+                        <ChassisTypePublisher chassis_cmd="4"/>
+                        <Sleep msec="1000"/>
+                    </Sequence>
+                    <!-- 点4（重复点1） -->
+                    <Sequence>
+                        <ChassisTypePublisher chassis_cmd="2"/>
+                        <Nav2Pose goal="1.95,1.4,0.0,0.0,0.0,0.0,0.0"/>
+                        <ChassisTypePublisher chassis_cmd="4"/>
+                        <Sleep msec="1000"/>
+                    </Sequence>
+                </Sequence>
+            </ReactiveFallback>
+        </ReactiveSequence>
+    </BehaviorTree>
+
+    <!-- Description of Node Models (used by Groot) -->
+    <TreeNodesModel>
+        <Action ID="Attack">
+            <output_port name="attack_pose" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;"/>
+            <input_port name="target_position" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;"/>
+        </Action>
+        <Action ID="ChassisTypePublisher">
+            <input_port name="chassis_cmd" type="signed char">Chassis type value (0-127)</input_port>
+        </Action>
+        <Decorator ID="IsInPosition">
+            <input_port name="p1" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;"/>
+            <input_port name="p2" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;"/>
+            <input_port name="p3" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;"/>
+            <input_port name="p4" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;"/>
+        </Decorator>
+        <Action ID="ModePublisher">
+            <input_port name="mode" type="signed char">Robot mode: 0=offense, 1=defense, 2=mobile</input_port>
+        </Action>
+        <Action ID="Nav2Pose">
+            <input_port name="goal" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;">goal send to navigator.</input_port>
+        </Action>
+        <Action ID="Topics2Blackboard">
+            <output_port name="target_armor_id" type="std::string"/>
+            <output_port name="tracking" type="bool"/>
+            <output_port name="projectile_allowance_17mm" type="unsigned short"/>
+            <output_port name="enemy_outpost_hp" type="unsigned short"/>
+            <output_port name="my_base_hp" type="unsigned short"/>
+            <output_port name="my_outpost_hp" type="unsigned short"/>
+            <output_port name="armor_id" type="unsigned char"/>
+            <output_port name="target_position" type="geometry_msgs::msg::PoseStamped_&lt;std::allocator&lt;void&gt; &gt;"/>
+            <output_port name="enemy_base_hp" type="unsigned short"/>
+            <output_port name="hurt_type" type="unsigned char"/>
+            <output_port name="stage_remain_time" type="unsigned short"/>
+            <output_port name="game_progress" type="unsigned char"/>
+            <output_port name="current_hp" type="unsigned short"/>
+            <!-- 新增端口：对方前哨站增益点是否被占领 -->
+            <output_port name="enemy_outpost_occupied" type="bool"/>
+        </Action>
+    </TreeNodesModel>
+</root>
