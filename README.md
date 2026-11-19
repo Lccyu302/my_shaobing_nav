@@ -51,7 +51,8 @@ docker build -t scurm:sentry_nav .
 
  for Linux user, run
 ```bash
-sudo xhost + && sudo docker run -dit --network=host --pid=host --privileged -v /dev:/dev -e DISPLAY=${DISPLAY} scurm:sentry_nav
+sudo xhost + && sudo docker run -dit --network=host --pid=host --privileged -v /dev:/dev -e DISPLAY=${DISPLAY} polarisxq/scurm:sentry_nav
+##sudo xhost + && sudo docker run -dit --network=host --pid=host --privileged -v /dev:/dev -e DISPLAY=${DISPLAY} scurm:sentry_nav
 
 #Insatll Groot2
 
@@ -96,9 +97,14 @@ pcl_viewer -fc 255,255,0 -ax 3 < filename >
 ### LAUNCH ALL
 
 ```bash
-ros2 launch sentry_bringup bringup_all_in_one.launch.py
-ros2 launch rm_bringup bringup.launch.py
-ros2 run control_panel control_panel
+source /opt/ros/humble/setup.bash
+ros2 launch sentry_bringup bringup_all_in_one.launch.py //导航
+ros2 launch rm_bringup bringup.launch.py //自瞄
+ros2 run control_panel control_panel //裁判系统模拟器
+```
+```bash
+source sentry_ws_260414/sentry_ws/install/local_setup.bash
+ros2 launch sentry_bringup bringup_all_in_one.launch.py log_level:=info
 ```
 
 

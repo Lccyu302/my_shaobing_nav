@@ -98,6 +98,6 @@ def generate_launch_description():
 
     ld.add_action(start_relocalization)
     ld.add_action(delayed_start_navigation)
-    ld.add_action(delayed_start_decision)  # 不用自动决策的时候这个不用开
-    # ld.add_action(delayed_start_rm_bringup)      # 新增
+    ld.add_action(delayed_start_decision)  # 单点导航测试：关闭自动决策
+    ld.add_action(delayed_start_rm_bringup)      # 新增
     return ld

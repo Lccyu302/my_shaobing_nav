@@ -81,7 +81,7 @@ def generate_launch_description():
           {'max_correspondence_distance':0.1},
           {'RANSAC_outlier_rejection_threshold':0.5},
           # {'map_path':'/home/sentry_ws/src/sentry_bringup/maps/CC#0.pcd'},
-          {'map_path':'/home/xinzhu/Desktop/sentry_ws/src/sentry_bringup/maps/test.pcd'},
+          {'map_path':'/home/shaobing/backup_cy/xinzhu_26_shaobing_navigation/test2.pcd'},
           {'fitness_score_thre':0.9}, # 是最近点距离的平均值，越小越严格
           {'converged_count_thre':40}, # pcl pub at 20 hz, 2s
           {'pcl_type':'livox'},
@@ -121,7 +121,9 @@ def generate_launch_description():
   ld = LaunchDescription()
 
   ld.add_action(twist2chassis_cmd_node)
-  ld.add_action(fake_joint_node)
+  # FAST-LIO supplies odom -> base_link; URDF supplies base_link -> yaw_link -> chassis_link.
+  # fake_joint would add a conflicting odom -> chassis_link and force its yaw to zero.
+  # ld.add_action(fake_joint_node)
   ld.add_action(twist_transformer_node)
   ld.add_action(rot_imu)
   ld.add_action(mid360_node)

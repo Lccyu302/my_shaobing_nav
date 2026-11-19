@@ -19,13 +19,16 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 #######################
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake_modules)
-set(EXTERNAL_INCLUDE_DIRS ${G2O_INCLUDE_DIR})
-set(EXTERNAL_LIBS ${G2O_LIBRARIES})
+set(EXTERNAL_INCLUDE_DIRS ${g2o_INCLUDE_DIRS})
+set(EXTERNAL_LIBS ${g2o_LIBRARIES})
 
 find_package(ament_cmake_auto REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(TBB REQUIRED COMPONENTS tbb)
-find_package(g2o REQUIRED PATHS "/usr/local/lib/cmake/g2o" NO_DEFAULT_PATH)
+set(g2o_DIR "/opt/ros/humble/lib/cmake/g2o")
+find_package(g2o REQUIRED)
+include_directories(/opt/ros/humble/include)
+link_directories(/opt/ros/humble/lib/x86_64-linux-gnu)
 #find_package(G2O REQUIRED)
 find_package(fmt REQUIRED)
 find_package(Sophus REQUIRED)
@@ -41,8 +44,7 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
 
 target_include_directories(${PROJECT_NAME} PUBLIC
 ${OpenCV_INCLUDE_DIRS}
-${G2O_INCLUDE_DIRS}
-${Sophus_INCLUDE_DIRS}
+${g2o_INCLUDE_DIRS}
 ${EIGEN3_INCLUDE_DIRS}
 )
 

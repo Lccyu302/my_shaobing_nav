@@ -24,8 +24,8 @@ ProtocolInfantry::ProtocolInfantry(std::string_view port_name, bool enable_data_
 
 void ProtocolInfantry::send(const auto_aim_interfaces::msg::GimbalCmd &data) {
   packet_.loadData<unsigned char>(0xec, 1);
-  // std::cout <<"pitch:  "  << data.pitch << "\n";
-  // std::cout <<"yaw:    "  << data.yaw << "\n";
+  std::cout <<"pitch:  "  << data.pitch << "\n";
+  std::cout <<"yaw:    "  << data.yaw << "\n";
   packet_.loadData<unsigned char>(data.fire_advice ? FireState::Fire : FireState::NotFire, 2);
   packet_.loadData<float>(static_cast<float>(data.pitch), 3);
   packet_.loadData<float>(static_cast<float>(data.yaw), 7);
@@ -68,6 +68,7 @@ bool ProtocolInfantry::receive(auto_aim_interfaces::msg::SerialReceiveData &data
   
     packet.unloadData(data.pitch, 2);//2-5
     packet.unloadData(data.yaw, 6);//6-9
+    
     packet.unloadData(data.gamestate.current_hp, 10);//10-11
     packet.unloadData(data.gamestate.game_progress, 12);//12
     packet.unloadData(data.gamestate.hurt_type, 13);//13

@@ -1,7 +1,7 @@
 /**:
     ros__parameters:
         locate_in_prior_map: true
-        prior_map_path: "/home/xinzhu/Desktop/sentry_ws/src/sentry_bringup/maps/test.pcd"
+        prior_map_path: "/home/shaobing/backup_cy/xinzhu_26_shaobing_navigation/test2.pcd"
         feature_extract_enable: false
         point_filter_num: 3
         max_iteration: 3
